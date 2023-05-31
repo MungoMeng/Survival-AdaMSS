@@ -70,7 +70,7 @@ def train(data_dir,
     Weights = [1.0, 1.0]
     
     # data generator
-    data_gen = datagenerators.gen_rtload(data_dir, train_samples, batch_size=batch_size)
+    data_gen = datagenerators.gen_load(data_dir, train_samples, batch_size=batch_size)
     train_gen = datagenerators.gen_seg(data_gen)
     
     # training/validation loops
