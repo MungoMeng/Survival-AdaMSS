@@ -91,7 +91,7 @@ class Single_encoder(nn.Module):
         return x_1, x_2, x_3, x_4, x_5
 
     
-class AutoFuse_encoder(nn.Module):
+class Fuse_encoder(nn.Module):
 
     def __init__(self, channel_num):
         super().__init__()
