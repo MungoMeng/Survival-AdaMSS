@@ -57,10 +57,6 @@ def test(data_dir,
     model.to(device)
     model.eval()
     
-    # outputs
-    Patient = []
-    Score = []
-    
     # evaluate on training set
     Survival_time_train = []
     Survival_label_train = []
