@@ -10,22 +10,21 @@ class DeepMSS_Seg(nn.Module):
     def __init__(self):
         super().__init__()
         
-        self.PT_encoder = Single_encoder(channel_num=6)
-        self.CT_encoder = Single_encoder(channel_num=6)
-        self.AutoFuse_encoder = AutoFuse_encoder(channel_num=12)
-        self.Seg_decoder = Seg_decoder(channel_num=12)
+        self.PET_encoder = Single_encoder(channel_num=8)
+        self.CT_encoder = Single_encoder(channel_num=8)
+        self.Fuse_encoder = Fuse_encoder(channel_num=16)
+        self.Seg_decoder = Seg_decoder(channel_num=16)
         
-    def forward(self, PT, CT):
+    def forward(self, PET, CT):
 
-        x_PT_1, x_PT_2, x_PT_3, x_PT_4, x_PT_5 = self.PT_encoder(PT)
+        x_PET_1, x_PET_2, x_PET_3, x_PET_4, x_PET_5 = self.PET_encoder(PET)
         x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5 = self.CT_encoder(CT)
+        x_1, x_2, x_3, x_4, x_5 = self.Fuse_encoder(PET, CT,
+                                                    x_PET_1, x_PET_2, x_PET_3, x_PET_4, x_PET_5,
+                                                    x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5)
+        Seg_Tumor_pred, Seg_Node_pred = self.Seg_decoder(x_1, x_2, x_3, x_4, x_5)
         
-        x_1, x_2, x_3, x_4, x_5 = self.AutoFuse_encoder(PT, CT, x_PT_1, x_PT_2, x_PT_3, x_PT_4, x_PT_5,
-                                                                x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5)
-        
-        Seg_T_pred, Seg_N_pred = self.Seg_decoder(x_1, x_2, x_3, x_4, x_5)
-        
-        return [Seg_T_pred, Seg_N_pred]
+        return [Seg_Tumor_pred, Seg_Node_pred]
     
     
 class DeepMSS_Surv(nn.Module):
@@ -33,45 +32,21 @@ class DeepMSS_Surv(nn.Module):
     def __init__(self):
         super().__init__()
         
-        self.PT_encoder = Single_encoder(channel_num=6)
-        self.CT_encoder = Single_encoder(channel_num=6)
-        self.AutoFuse_encoder = AutoFuse_encoder(channel_num=12)
-        self.Surv_decoder = Surv_decoder(channel_num=12, interval_num=10)
+        self.PET_encoder = Single_encoder(channel_num=8)
+        self.CT_encoder = Single_encoder(channel_num=8)
+        self.Fuse_encoder = Fuse_encoder(channel_num=16)
+        self.Surv_decoder = Surv_decoder(channel_num=16, interval_num=10)
         
-    def forward(self, PT, CT):
+    def forward(self, PET, CT):
 
-        x_PT_1, x_PT_2, x_PT_3, x_PT_4, x_PT_5 = self.PT_encoder(PT)
+        x_PET_1, x_PET_2, x_PET_3, x_PET_4, x_PET_5 = self.PET_encoder(PET)
         x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5 = self.CT_encoder(CT)
+        x_1, x_2, x_3, x_4, x_5 = self.Fuse_encoder(PET, CT,
+                                                    x_PET_1, x_PET_2, x_PET_3, x_PET_4, x_PET_5,
+                                                    x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5)
+        Surv_pred, Regu_weight = self.Surv_decoder(x_1, x_2, x_3, x_4, x_5)
         
-        x_1, x_2, x_3, x_4, x_5 = self.AutoFuse_encoder(PT, CT, x_PT_1, x_PT_2, x_PT_3, x_PT_4, x_PT_5,
-                                                                x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5)
-        
-        Surv_pred, Reg_weight = self.Surv_decoder(x_1, x_2, x_3, x_4, x_5)
-        
-        return [Surv_pred, Reg_weight]
-    
-    
-class DeepMSS_Multitask(nn.Module):
-
-    def __init__(self):
-        super().__init__()
-        
-        self.PT_encoder = Single_encoder(channel_num=6)
-        self.CT_encoder = Single_encoder(channel_num=6)
-        self.AutoFuse_encoder = AutoFuse_encoder(channel_num=12)
-        self.Multitask_decoder = Multitask_decoder(channel_num=12, interval_num=10)
-        
-    def forward(self, PT, CT):
-
-        x_PT_1, x_PT_2, x_PT_3, x_PT_4, x_PT_5 = self.PT_encoder(PT)
-        x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5 = self.CT_encoder(CT)
-        
-        x_1, x_2, x_3, x_4, x_5 = self.AutoFuse_encoder(PT, CT, x_PT_1, x_PT_2, x_PT_3, x_PT_4, x_PT_5,
-                                                                x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5)
-        
-        Seg_T_pred, Seg_N_pred, Surv_pred, Reg_weight = self.Multitask_decoder(x_1, x_2, x_3, x_4, x_5)
-        
-        return [Seg_T_pred, Seg_N_pred, Surv_pred, Reg_weight]
+        return [Surv_pred, Regu_weight]
 
     
 #--------------------------------------------------------------------------------------     
@@ -138,49 +113,51 @@ class AutoFuse_encoder(nn.Module):
         self.MaxPool_3 = nn.MaxPool3d(2, stride=2)
         self.MaxPool_4 = nn.MaxPool3d(2, stride=2)
         
-        self.Atten_add_1 = Atten_add_block(channel_num)
-        self.Atten_add_2 = Atten_add_block(channel_num*2)
-        self.Atten_add_3 = Atten_add_block(channel_num*4)
-        self.Atten_add_4 = Atten_add_block(channel_num*8)
-        self.Atten_add_5 = Atten_add_block(channel_num*16)
+        self.FG_1 = Fusion_gate_block(channel_num)
+        self.FG_2 = Fusion_gate_block(channel_num*2)
+        self.FG_3 = Fusion_gate_block(channel_num*4)
+        self.FG_4 = Fusion_gate_block(channel_num*8)
+        self.FG_5 = Fusion_gate_block(channel_num*16)
         
-    def forward(self, PT, CT, x_PT_1, x_PT_2, x_PT_3, x_PT_4, x_PT_5, x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5):
+    def forward(self, PET, CT,
+               x_PET_1, x_PET_2, x_PET_3, x_PET_4, x_PET_5,
+               x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5):
 
-        x = torch.cat([x_PT_1, x_CT_1], dim=1)
+        x = torch.cat([x_PET_1, x_CT_1], dim=1)
         x_con_1 = self.Conv_1(x)
         
-        x = torch.cat([x_PT_2, x_CT_2], dim=1)
+        x = torch.cat([x_PET_2, x_CT_2], dim=1)
         x_con_2 = self.Conv_2(x)
         
-        x = torch.cat([x_PT_3, x_CT_3], dim=1)
+        x = torch.cat([x_PET_3, x_CT_3], dim=1)
         x_con_3 = self.Conv_3(x)
         
-        x = torch.cat([x_PT_4, x_CT_4], dim=1)
+        x = torch.cat([x_PET_4, x_CT_4], dim=1)
         x_con_4 = self.Conv_4(x)
         
-        x = torch.cat([x_PT_5, x_CT_5], dim=1)
+        x = torch.cat([x_PET_5, x_CT_5], dim=1)
         x_con_5 = self.Conv_5(x)
         
         # automatic fuse encoder
-        x = torch.cat([PT, CT], dim=1)
+        x = torch.cat([PET, CT], dim=1)
         x = self.RB_1(x)
-        x_1 = self.Atten_add_1(x, x_con_1)
+        x_1 = self.FG_1(x, x_con_1)
         
         x = self.MaxPool_1(x_1)
         x = self.RB_2(x)
-        x_2 = self.Atten_add_2(x, x_con_2)
+        x_2 = self.FG_2(x, x_con_2)
         
         x = self.MaxPool_2(x_2)
         x = self.RB_3(x)
-        x_3 = self.Atten_add_3(x, x_con_3)
+        x_3 = self.FG_3(x, x_con_3)
         
         x = self.MaxPool_3(x_3)
         x = self.RB_4(x)
-        x_4 = self.Atten_add_4(x, x_con_4)
+        x_4 = self.FG_4(x, x_con_4)
         
         x = self.MaxPool_4(x_4)
         x = self.RB_5(x)
-        x_5 = self.Atten_add_5(x, x_con_5)
+        x_5 = self.FG_5(x, x_con_5)
         
         return x_1, x_2, x_3, x_4, x_5
     
@@ -237,10 +214,10 @@ class Seg_decoder(nn.Module):
         # Segmentation output
         x = self.Conv(x_9)
         x = self.Sigmoid(x)
-        Seg_T_pred = x[:,0:1,:,:,:]
-        Seg_N_pred = x[:,1:2,:,:,:]
+        Seg_Tumor_pred = x[:,0:1,:,:,:]
+        Seg_Node_pred = x[:,1:2,:,:,:]
             
-        return Seg_T_pred, Seg_N_pred
+        return Seg_Tumor_pred, Seg_Node_pred
     
     
 class Surv_decoder(nn.Module):
@@ -313,93 +290,9 @@ class Surv_decoder(nn.Module):
         x = self.dense_2(x)
         Surv_pred = self.Sigmoid(x)
         
-        Reg_weight = [self.dense_1.weight, self.dense_2.weight]
+        Regu_weight = [self.dense_1.weight, self.dense_2.weight]
         
-        return Surv_pred, Reg_weight
-    
-
-class Multitask_decoder(nn.Module):
-
-    def __init__(self, channel_num, interval_num):
-        super().__init__()
-        
-        self.RB_6 = Residual_block(channel_num*16+channel_num*8, channel_num*8, 4)
-        self.RB_7 = Residual_block(channel_num*8+channel_num*4, channel_num*4, 3)
-        self.RB_8 = Residual_block(channel_num*4+channel_num*2, channel_num*2, 3)
-        self.RB_9 = Residual_block(channel_num*2+channel_num, channel_num, 2)
-        
-        self.upsample_6 = nn.Upsample(scale_factor=2, mode='nearest')
-        self.upsample_7 = nn.Upsample(scale_factor=2, mode='nearest')
-        self.upsample_8 = nn.Upsample(scale_factor=2, mode='nearest')
-        self.upsample_9 = nn.Upsample(scale_factor=2, mode='nearest')
-        
-        self.Atten_gate_6 = Atten_gate_block(channel_num*8)
-        self.Atten_gate_7 = Atten_gate_block(channel_num*4)
-        self.Atten_gate_8 = Atten_gate_block(channel_num*2)
-        self.Atten_gate_9 = Atten_gate_block(channel_num)
-        
-        self.Conv = nn.Conv3d(channel_num, 2, kernel_size=1, stride=1, padding='same')
-        
-        self.dropout_1 = nn.Dropout(0.5)
-        self.dropout_2 = nn.Dropout(0.5)
-        
-        self.dense_1 = nn.Linear(channel_num*15, channel_num*8)
-        self.dense_2 = nn.Linear(channel_num*8, interval_num)
-        
-        self.ReLU = nn.ReLU()
-        self.Sigmoid = nn.Sigmoid()
-        
-    def forward(self, x_1, x_2, x_3, x_4, x_5):
-
-        # upsample 1/8 scale
-        x_gate = self.Atten_gate_6(x_4, x_5)
-        x_up = self.upsample_6(x_5)
-        x = torch.cat([x_gate, x_up], dim=1)
-        x_6 = self.RB_6(x)
-    
-        # upsample 1/4 scale
-        x_gate = self.Atten_gate_7(x_3, x_6)
-        x_up = self.upsample_7(x_6)
-        x = torch.cat([x_gate, x_up], dim=1)
-        x_7 = self.RB_7(x)
-        
-        # upsample 1/2 scale
-        x_gate = self.Atten_gate_8(x_2, x_7)
-        x_up = self.upsample_8(x_7)
-        x = torch.cat([x_gate, x_up], dim=1)
-        x_8 = self.RB_8(x)
-    
-        # full scale
-        x_gate = self.Atten_gate_9(x_1, x_8)
-        x_up = self.upsample_9(x_8)
-        x = torch.cat([x_gate, x_up], dim=1)
-        x_9 = self.RB_9(x)
-        
-        # Segmentation output
-        x = self.Conv(x_9)
-        x = self.Sigmoid(x)
-        Seg_T_pred = x[:,0:1,:,:,:]
-        Seg_N_pred = x[:,1:2,:,:,:]
-        
-        # Survival output
-        x_6 = torch.mean(x_6, dim=(2,3,4))
-        x_7 = torch.mean(x_7, dim=(2,3,4))
-        x_8 = torch.mean(x_8, dim=(2,3,4))
-        x_9 = torch.mean(x_9, dim=(2,3,4))
-        x = torch.cat([x_6, x_7, x_8, x_9], dim=1)
-        
-        x = self.dropout_1(x)
-        x = self.dense_1(x)
-        x = self.ReLU(x)
-        
-        x = self.dropout_2(x)
-        x = self.dense_2(x)
-        Surv_pred = self.Sigmoid(x)
-        
-        # L2 Regularization output
-        Reg_weight = [self.dense_1.weight, self.dense_2.weight]
-            
-        return Seg_T_pred, Seg_N_pred, Surv_pred, Reg_weight
+        return Surv_pred, Regu_weight
     
     
 #-------------------------------------------------------------------------------------- 
@@ -447,7 +340,7 @@ class Residual_block(nn.Module):
         return x_out
 
 
-class Atten_add_block(nn.Module):
+class Fusion_gate_block(nn.Module):
 
     def __init__(self, channel_num):
         super().__init__()

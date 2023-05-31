@@ -21,6 +21,18 @@ def Loglike_loss(y_true, y_pred, n_intervals=10):
     return loss
 
 
+def L2_Regu_loss(_, weights, alpha=0.1):
+    '''
+    Loss for L2 Regularization on weights
+    '''
+    
+    loss = 0
+    for weight in weights:
+        loss += torch.square(weight).sum()
+
+    return alpha * loss
+
+
 def Dice_loss(y_true, y_pred):
     
     ndims = len(list(y_pred.size())) - 2
@@ -46,12 +58,3 @@ def Focal_loss(y_true, y_pred, alpha=0.25, gamma=2, epsilon = 1e-5):
 
 def Seg_loss(y_true, y_pred):
     return Dice_loss(y_true, y_pred) + Focal_loss(y_true, y_pred)
-
-
-def L2_Reg_loss(_, weights, alpha=0.1):
-    
-    loss = 0
-    for weight in weights:
-        loss += torch.square(weight).sum()
-    
-    return alpha * loss

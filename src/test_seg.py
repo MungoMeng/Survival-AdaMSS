@@ -18,8 +18,7 @@ def test(data_dir,
          train_samples,
          test_samples,
          device, 
-         load_model,
-         save_dir):
+         load_model):
     
     # prepare data files
     train_samples = np.load(train_samples, allow_pickle=True)
@@ -43,94 +42,62 @@ def test(data_dir,
     model.eval()
     
     # evaluate on training set
-    T_inter_train = T_union_train = 0
-    N_inter_train = N_union_train = 0
+    Tumor_inter_train = Tumor_union_train = 0
+    Node_inter_train = Node_union_train = 0
     for train_image in train_samples:
         
         # load subject
-        PT, CT, Seg_T, Seg_N, _ = datagenerators.load_by_name(data_dir, train_image)
-        PT = torch.from_numpy(PT).to(device).float()
+        PET, CT, Seg_Tumor, Seg_Node, _ = datagenerators.load_by_name(data_dir, train_image)
+        PET = torch.from_numpy(PET).to(device).float()
         CT = torch.from_numpy(CT).to(device).float()
         
         with torch.no_grad():
-            pred = model(PT, CT)
+            pred = model(PET, CT)
         
-        Seg_T_pred = pred[0].detach().cpu().numpy().squeeze()
-        Seg_N_pred = pred[1].detach().cpu().numpy().squeeze()
+        Seg_Tumor_pred = pred[0].detach().cpu().numpy().squeeze()
+        Seg_Node_pred = pred[1].detach().cpu().numpy().squeeze()
         
-        _, Seg_T_pred = cv2.threshold(Seg_T_pred,0.5,1,cv2.THRESH_BINARY)
-        T_inter_train = T_inter_train + np.sum(Seg_T_pred * Seg_T)
-        T_union_train = T_union_train + np.sum(Seg_T_pred + Seg_T)
+        _, Seg_Tumor_pred = cv2.threshold(Seg_Tumor_pred,0.5,1,cv2.THRESH_BINARY)
+        Tumor_inter_train = Tumor_inter_train + np.sum(Seg_Tumor_pred * Seg_Tumor)
+        Tumor_union_train = Tumor_union_train + np.sum(Seg_Tumor_pred + Seg_Tumor)
         
-        _, Seg_N_pred = cv2.threshold(Seg_N_pred,0.5,1,cv2.THRESH_BINARY)
-        N_inter_train = N_inter_train + np.sum(Seg_N_pred * Seg_N)
-        N_union_train = N_union_train + np.sum(Seg_N_pred + Seg_N)
-        
-        # save to nii file
-        if save_dir != './':
-            save_path = save_dir+bytes.decode(train_image[:-4])
-            print('saving to', save_path)
-            
-            nii_img = nib.Nifti1Image(Seg_T_pred, np.eye(4))
-            nib.save(nii_img, save_path+'_Seg_T.nii.gz')
-    
-            nii_img = nib.Nifti1Image(Seg_N_pred, np.eye(4))
-            nib.save(nii_img, save_path+'_Seg_N.nii.gz')
-    
-            Seg_pred = Seg_T_pred + Seg_N_pred
-            Seg_pred[Seg_pred>1.0] = 1.0
-            nii_img = nib.Nifti1Image(Seg_pred, np.eye(4))
-            nib.save(nii_img, save_path+'_Seg_TN.nii.gz')
+        _, Seg_Node_pred = cv2.threshold(Seg_Node_pred,0.5,1,cv2.THRESH_BINARY)
+        Node_inter_train = Node_inter_train + np.sum(Seg_Node_pred * Seg_Node)
+        Node_union_train = Node_union_train + np.sum(Seg_Node_pred + Seg_Node)
     
     # evaluate on testing set
-    T_inter_test = T_union_test = 0
-    N_inter_test = N_union_test = 0
+    Tumor_inter_test = Tumor_union_test = 0
+    Node_inter_test = Node_union_test = 0
     for test_image in test_samples:
         
         # load subject
-        PT, CT, Seg_T, Seg_N, _ = datagenerators.load_by_name(data_dir, test_image)
-        PT = torch.from_numpy(PT).to(device).float()
+        PET, CT, Seg_Tumor, Seg_Node, _ = datagenerators.load_by_name(data_dir, test_image)
+        PET = torch.from_numpy(PET).to(device).float()
         CT = torch.from_numpy(CT).to(device).float()
         
         with torch.no_grad():
-            pred = model(PT, CT)
+            pred = model(PET, CT)
         
-        Seg_T_pred = pred[0].detach().cpu().numpy().squeeze()
-        Seg_N_pred = pred[1].detach().cpu().numpy().squeeze()
+        Seg_Tumor_pred = pred[0].detach().cpu().numpy().squeeze()
+        Seg_Node_pred = pred[1].detach().cpu().numpy().squeeze()
         
-        _, Seg_T_pred = cv2.threshold(Seg_T_pred,0.5,1,cv2.THRESH_BINARY)
-        T_inter_test = T_inter_test + np.sum(Seg_T_pred * Seg_T)
-        T_union_test = T_union_test + np.sum(Seg_T_pred + Seg_T)
+        _, Seg_Tumor_pred = cv2.threshold(Seg_Tumor_pred,0.5,1,cv2.THRESH_BINARY)
+        Tumor_inter_test = Tumor_inter_test + np.sum(Seg_Tumor_pred * Seg_Tumor)
+        Tumor_union_test = Tumor_union_test + np.sum(Seg_Tumor_pred + Seg_Tumor)
         
-        _, Seg_N_pred = cv2.threshold(Seg_N_pred,0.5,1,cv2.THRESH_BINARY)
-        N_inter_test = N_inter_test + np.sum(Seg_N_pred * Seg_N)
-        N_union_test = N_union_test + np.sum(Seg_N_pred + Seg_N)
-        
-        # save to nii file
-        if save_dir != './':
-            save_path = save_dir+bytes.decode(test_image[:-4])
-            print('saving to', save_path)
-            
-            nii_img = nib.Nifti1Image(Seg_T_pred, np.eye(4))
-            nib.save(nii_img, save_path+'_Seg_T.nii.gz')
-    
-            nii_img = nib.Nifti1Image(Seg_N_pred, np.eye(4))
-            nib.save(nii_img, save_path+'_Seg_N.nii.gz')
-    
-            Seg_pred = Seg_T_pred + Seg_N_pred
-            Seg_pred[Seg_pred>1.0] = 1.0
-            nii_img = nib.Nifti1Image(Seg_pred, np.eye(4))
-            nib.save(nii_img, save_path+'_Seg_TN.nii.gz')
+        _, Seg_Node_pred = cv2.threshold(Seg_Node_pred,0.5,1,cv2.THRESH_BINARY)
+        Node_inter_test = Node_inter_test + np.sum(Seg_Node_pred * Seg_Node)
+        Node_union_test = Node_union_test + np.sum(Seg_Node_pred + Seg_Node)
      
     # calculat the mean results
-    Dice_T_train = 2*T_inter_train/T_union_train
-    Dice_T_test = 2*T_inter_test/T_union_test
-    Dice_N_train = 2*N_inter_train/N_union_train
-    Dice_N_test = 2*N_inter_test/N_union_test
-    Dice_train = np.mean([Dice_T_train,Dice_N_train])
-    Dice_test = np.mean([Dice_T_test,Dice_N_test])
-    print('Tumor Dice: {:.3f}/{:.3f}'.format(Dice_T_train, Dice_T_test))
-    print('Node Dice: {:.3f}/{:.3f}'.format(Dice_N_train, Dice_N_test))
+    Dice_Tumor_train = 2*Tumor_inter_train/Tumor_union_train
+    Dice_Tumor_test = 2*Tumor_inter_test/Tumor_union_test
+    Dice_Node_train = 2*Node_inter_train/Node_union_train
+    Dice_Node_test = 2*Node_inter_test/Node_union_test
+    Dice_train = np.mean([Dice_Tumor_train,Dice_Node_train])
+    Dice_test = np.mean([Dice_Tumor_test,Dice_Node_test])
+    print('Tumor Dice: {:.3f}/{:.3f}'.format(Dice_Tumor_train, Dice_Tumor_test))
+    print('Node Dice: {:.3f}/{:.3f}'.format(Dice_Node_train, Dice_Node_test))
     print('Average Dice: {:.3f}/{:.3f}'.format(Dice_train, Dice_test))
     
 
@@ -151,9 +118,6 @@ if __name__ == "__main__":
     parser.add_argument("--load_model", type=str,
                         dest="load_model", default='./',
                         help="load best model")
-    parser.add_argument("--save_dir", type=str,
-                        dest="save_dir", default='./',
-                        help="save outputs to folder")
 
     args = parser.parse_args()
     test(**vars(args))

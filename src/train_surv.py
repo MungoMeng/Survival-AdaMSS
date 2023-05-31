@@ -37,10 +37,8 @@ def lr_scheduler(epoch):
         lr = 5e-5
     elif epoch < 40:
         lr = 1e-5
-    elif epoch < 80:
-        lr = 1e-6
     else:
-        lr = 1e-7
+        lr = 1e-6
     return lr
 
 
@@ -84,7 +82,7 @@ def train(data_dir,
     optimizer = torch.optim.Adam(model.parameters())
     
     # prepare losses
-    Losses = [losses.Loglike_loss, losses.L2_Reg_loss]
+    Losses = [losses.Loglike_loss, losses.L2_Regu_loss]
     Weights = [1.0, 1.0]
     
     # data generator
@@ -136,14 +134,14 @@ def train(data_dir,
         for valid_image in valid_samples:
             
             # generate inputs (and true outputs) and convert them to tensors
-            PT, CT, _, _, Label = datagenerators.load_by_name(data_dir, valid_image)
-            PT = torch.from_numpy(PT).to(device).float()
+            PET, CT, _, _, Label = datagenerators.load_by_name(data_dir, valid_image)
+            PET = torch.from_numpy(PET).to(device).float()
             CT = torch.from_numpy(CT).to(device).float()
             Survival_label.append(Label)
 
             # run inputs through the model to produce a warped image and flow field
             with torch.no_grad():
-                pred = model(PT, CT)
+                pred = model(PET, CT)
 
             # calculate validation metrics
             Survival_pred = pred[0].detach().cpu().numpy().squeeze()
@@ -187,7 +185,7 @@ if __name__ == "__main__":
                         dest="initial_epoch", default=0,
                         help="initial_epoch")
     parser.add_argument("--epochs", type=int,
-                        dest="epochs", default=100,
+                        dest="epochs", default=50,
                         help="number of epoch")
     parser.add_argument("--steps_per_epoch", type=int,
                         dest="steps_per_epoch", default=200,

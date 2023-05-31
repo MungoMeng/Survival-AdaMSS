@@ -5,7 +5,6 @@ import cv2
 import random
 import nibabel as nib  
 import pandas as pd
-
 import imgaug as ia
 from imgaug import augmenters as iaa
 
@@ -14,57 +13,35 @@ def gen_seg(gen):
     
     while True:
         X = next(gen)
-        PT = X[0]
+        PET = X[0]
         CT = X[1]
-        Seg_T = X[2]
-        Seg_N = X[3]
+        Seg_Tumor = X[2]
+        Seg_Node = X[3]
         
-        #data augmentation
-        PT, CT, Seg_T, Seg_N = Data_augmentation_seg(PT, CT, Seg_T, Seg_N)
+        # data augmentation
+        PET, CT, Seg_Tumor, Seg_Node = Data_augmentation_seg(PET, CT, Seg_Tumor, Seg_Node)
         
-        yield [PT, CT], [Seg_T, Seg_N]
+        yield [PET, CT], [Seg_Tumor, Seg_Node]
         
         
 def gen_surv(gen):
     
     while True:
         X = next(gen)
-        PT = X[0]
+        PET = X[0]
         CT = X[1]
         Label = X[4]
         
         # data augmentation
-        PT, CT = Data_augmentation_surv(PT, CT)
+        PET, CT = Data_augmentation_surv(PET, CT)
         
         # convert label to survival array
         Label = make_surv_array(Label[:,0], Label[:,1])
         
-        # generate a zero tensor
+        # generate a zero tensor as pseudo label
         Zero = np.zeros((1))
         
-        yield [PT, CT], [Label, Zero]
-        
-        
-def gen_multitask(gen):
-    
-    while True:
-        X = next(gen)
-        PT = X[0]
-        CT = X[1]
-        Seg_T = X[2]
-        Seg_N = X[3]
-        Label = X[4]
-        
-        #data augmentation
-        PT, CT, Seg_T, Seg_N = Data_augmentation_seg(PT, CT, Seg_T, Seg_N)
-        
-        # convert label to survival array
-        Label = make_surv_array(Label[:,0], Label[:,1])
-        
-        # generate a zero tensor
-        Zero = np.zeros((1))
-        
-        yield [PT, CT], [Seg_T, Seg_N, Label, Zero]
+        yield [PET, CT], [Label, Zero]
     
     
 def gen_rtload(data_path, sample_names, batch_size=1, balance_class=False):
@@ -97,7 +74,7 @@ def gen_rtload(data_path, sample_names, batch_size=1, balance_class=False):
             
         X_data = []
         for i in range(batch_size):
-            X = npz_data[i]['PT']
+            X = npz_data[i]['PET']
             X = X[np.newaxis, np.newaxis, ...]
             X_data.append(X)
         if batch_size > 1:
@@ -117,7 +94,7 @@ def gen_rtload(data_path, sample_names, batch_size=1, balance_class=False):
         
         X_data = []
         for i in range(batch_size):
-            X = npz_data[i]['Seg_T']
+            X = npz_data[i]['Seg_Tumor']
             X = X[np.newaxis, np.newaxis, ...]
             X_data.append(X)
         if batch_size > 1:
@@ -127,7 +104,7 @@ def gen_rtload(data_path, sample_names, batch_size=1, balance_class=False):
             
         X_data = []
         for i in range(batch_size):
-            X = npz_data[i]['Seg_N']
+            X = npz_data[i]['Seg_Node']
             X = X[np.newaxis, np.newaxis, ...]
             X_data.append(X)
         if batch_size > 1:
@@ -154,7 +131,7 @@ def load_by_name(data_path, sample_name):
     
     npz_data = load_volfile(data_path+bytes.decode(sample_name), np_var='all')
     
-    X = npz_data['PT']
+    X = npz_data['PET']
     X = X[np.newaxis, np.newaxis, ...]
     return_vals = [X]
     
@@ -162,10 +139,10 @@ def load_by_name(data_path, sample_name):
     X = X[np.newaxis, np.newaxis, ...]
     return_vals.append(X)
     
-    X = npz_data['Seg_T']
+    X = npz_data['Seg_Tumor']
     return_vals.append(X)
     
-    X = npz_data['Seg_N']
+    X = npz_data['Seg_Node']
     return_vals.append(X)
     
     Time = npz_data['Time']
@@ -178,6 +155,7 @@ def load_by_name(data_path, sample_name):
 
 #--------------------------------------------------------------------------------------
 # Util Functions
+#--------------------------------------------------------------------------------------
 
 def load_volfile(datafile, np_var):
     """
@@ -237,8 +215,9 @@ def make_surv_array(time, event):
 
 #--------------------------------------------------------------------------------------
 # Function for data argumentation
+#--------------------------------------------------------------------------------------
     
-def Data_augmentation_seg(PT, CT, Seg_T, Seg_N):
+def Data_augmentation_seg(PET, CT, Seg_Tumor, Seg_Node):
     
     # define augmentation sequence
     aug_seq = iaa.Sequential([
@@ -251,70 +230,70 @@ def Data_augmentation_seg(PT, CT, Seg_T, Seg_N):
         ],random_order=False)
     
     # pre-process data shape
-    PT = PT[:,0,:,:,:]
+    PET = PET[:,0,:,:,:]
     CT = CT[:,0,:,:,:]
-    Seg_T = Seg_T[:,0,:,:,:]
-    Seg_N = Seg_N[:,0,:,:,:]
+    Seg_Tumor = Seg_Tumor[:,0,:,:,:]
+    Seg_Node = Seg_Node[:,0,:,:,:]
     
     # flip/translate in x axls, rotate along z axls
-    images = np.concatenate((PT,CT,Seg_T,Seg_N), -1)
+    images = np.concatenate((PET,CT,Seg_Tumor,Seg_Node), -1)
     
     images_aug = np.array(aug_seq(images=images))
     
-    PT = images_aug[..., 0:int(images_aug.shape[3]/4)]    
+    PET = images_aug[..., 0:int(images_aug.shape[3]/4)]
     CT = images_aug[..., int(images_aug.shape[3]/4):int(images_aug.shape[3]/4*2)]
-    Seg_T = images_aug[..., int(images_aug.shape[3]/4*2):int(images_aug.shape[3]/4*3)]
-    Seg_N = images_aug[..., int(images_aug.shape[3]/4*3):int(images_aug.shape[3])]
+    Seg_Tumor = images_aug[..., int(images_aug.shape[3]/4*2):int(images_aug.shape[3]/4*3)]
+    Seg_Node = images_aug[..., int(images_aug.shape[3]/4*3):int(images_aug.shape[3])]
     
     # translate in z axls, rotate along y axls
-    PT = np.transpose(PT,(0,3,1,2))
+    PET = np.transpose(PET,(0,3,1,2))
     CT = np.transpose(CT,(0,3,1,2))
-    Seg_T = np.transpose(Seg_T,(0,3,1,2))
-    Seg_N = np.transpose(Seg_N,(0,3,1,2))
-    images = np.concatenate((PT,CT,Seg_T,Seg_N), -1)
+    Seg_Tumor = np.transpose(Seg_Tumor,(0,3,1,2))
+    Seg_Node = np.transpose(Seg_Node,(0,3,1,2))
+    images = np.concatenate((PET,CT,Seg_Tumor,Seg_Node), -1)
     
     images_aug = np.array(aug_seq(images=images))
     
-    PT = images_aug[..., 0:int(images_aug.shape[3]/4)]    
+    PET = images_aug[..., 0:int(images_aug.shape[3]/4)]
     CT = images_aug[..., int(images_aug.shape[3]/4):int(images_aug.shape[3]/4*2)]
-    Seg_T = images_aug[..., int(images_aug.shape[3]/4*2):int(images_aug.shape[3]/4*3)]
-    Seg_N = images_aug[..., int(images_aug.shape[3]/4*3):int(images_aug.shape[3])]
+    Seg_Tumor = images_aug[..., int(images_aug.shape[3]/4*2):int(images_aug.shape[3]/4*3)]
+    Seg_Node = images_aug[..., int(images_aug.shape[3]/4*3):int(images_aug.shape[3])]
     
     # translate in y axls, rotate along x axls
-    PT = np.transpose(PT,(0,3,1,2))
+    PET = np.transpose(PET,(0,3,1,2))
     CT = np.transpose(CT,(0,3,1,2))
-    Seg_T = np.transpose(Seg_T,(0,3,1,2))
-    Seg_N = np.transpose(Seg_N,(0,3,1,2))
-    images = np.concatenate((PT,CT,Seg_T,Seg_N), -1)
+    Seg_Tumor = np.transpose(Seg_Tumor,(0,3,1,2))
+    Seg_Node = np.transpose(Seg_Node,(0,3,1,2))
+    images = np.concatenate((PET,CT,Seg_Tumor,Seg_Node), -1)
     
     images_aug = np.array(aug_seq(images=images))
     
-    PT = images_aug[..., 0:int(images_aug.shape[3]/4)]    
+    PET = images_aug[..., 0:int(images_aug.shape[3]/4)]
     CT = images_aug[..., int(images_aug.shape[3]/4):int(images_aug.shape[3]/4*2)]
-    Seg_T = images_aug[..., int(images_aug.shape[3]/4*2):int(images_aug.shape[3]/4*3)]
-    Seg_N = images_aug[..., int(images_aug.shape[3]/4*3):int(images_aug.shape[3])]
+    Seg_Tumor = images_aug[..., int(images_aug.shape[3]/4*2):int(images_aug.shape[3]/4*3)]
+    Seg_Node = images_aug[..., int(images_aug.shape[3]/4*3):int(images_aug.shape[3])]
     
     # recover axls
-    PT = np.transpose(PT,(0,3,1,2))
+    PET = np.transpose(PET,(0,3,1,2))
     CT = np.transpose(CT,(0,3,1,2))
-    Seg_T = np.transpose(Seg_T,(0,3,1,2))
-    Seg_N = np.transpose(Seg_N,(0,3,1,2))
+    Seg_Tumor = np.transpose(Seg_Tumor,(0,3,1,2))
+    Seg_Node = np.transpose(Seg_Node,(0,3,1,2))
     
     # reset Seg mask to 1/0
-    for i in range(Seg_T.shape[0]):
-        _, Seg_T[i] = cv2.threshold(Seg_T[i],0.2,1,cv2.THRESH_BINARY)
-        _, Seg_N[i] = cv2.threshold(Seg_N[i],0.2,1,cv2.THRESH_BINARY)
+    for i in range(Seg_Tumor.shape[0]):
+        _, Seg_Tumor[i] = cv2.threshold(Seg_Tumor[i],0.2,1,cv2.THRESH_BINARY)
+        _, Seg_Node[i] = cv2.threshold(Seg_Node[i],0.2,1,cv2.THRESH_BINARY)
     
     # post-process data shape
-    PT = PT[..., np.newaxis].transpose((0,4,1,2,3))
+    PET = PET[..., np.newaxis].transpose((0,4,1,2,3))
     CT = CT[..., np.newaxis].transpose((0,4,1,2,3))
-    Seg_T = Seg_T[..., np.newaxis].transpose((0,4,1,2,3))
-    Seg_N = Seg_N[..., np.newaxis].transpose((0,4,1,2,3))
+    Seg_Tumor = Seg_Tumor[..., np.newaxis].transpose((0,4,1,2,3))
+    Seg_Node = Seg_Node[..., np.newaxis].transpose((0,4,1,2,3))
     
-    return PT, CT, Seg_T, Seg_N
+    return PET, CT, Seg_Tumor, Seg_Node
     
 
-def Data_augmentation_surv(PT, CT):
+def Data_augmentation_surv(PET, CT):
     
     # define augmentation sequence
     aug_seq = iaa.Sequential([
@@ -328,39 +307,39 @@ def Data_augmentation_surv(PT, CT):
     
     
     # pre-process data shape
-    PT = PT[:,0,:,:,:]
+    PET = PET[:,0,:,:,:]
     CT = CT[:,0,:,:,:]
     
     # flip/translate in x axls, rotate along z axls
-    images = np.concatenate((PT,CT), -1)
+    images = np.concatenate((PET,CT), -1)
     images_aug = np.array(aug_seq(images=images))
-    PT = images_aug[..., 0:int(images_aug.shape[3]/2)]    
+    PET = images_aug[..., 0:int(images_aug.shape[3]/2)]
     CT = images_aug[..., int(images_aug.shape[3]/2):int(images_aug.shape[3])]
     
     # flip/translate in z axls, rotate along y axls
-    PT = np.transpose(PT,(0,3,1,2))
+    PET = np.transpose(PET,(0,3,1,2))
     CT = np.transpose(CT,(0,3,1,2))
     
-    images = np.concatenate((PT,CT), -1)
+    images = np.concatenate((PET,CT), -1)
     images_aug = np.array(aug_seq(images=images))
-    PT = images_aug[..., 0:int(images_aug.shape[3]/2)]    
+    PET = images_aug[..., 0:int(images_aug.shape[3]/2)]
     CT = images_aug[..., int(images_aug.shape[3]/2):int(images_aug.shape[3])]
     
     # flip/translate in y axls, rotate along x axls
-    PT = np.transpose(PT,(0,3,1,2))
+    PET = np.transpose(PET,(0,3,1,2))
     CT = np.transpose(CT,(0,3,1,2))
     
-    images = np.concatenate((PT,CT), -1)
+    images = np.concatenate((PET,CT), -1)
     images_aug = np.array(aug_seq(images=images))
-    PT = images_aug[..., 0:int(images_aug.shape[3]/2)]    
+    PET = images_aug[..., 0:int(images_aug.shape[3]/2)]
     CT = images_aug[..., int(images_aug.shape[3]/2):int(images_aug.shape[3])]
     
     # recover axls
-    PT = np.transpose(PT,(0,3,1,2))
+    PET = np.transpose(PET,(0,3,1,2))
     CT = np.transpose(CT,(0,3,1,2))
     
     #post-process data shape
-    PT = PT[..., np.newaxis].transpose((0,4,1,2,3))
+    PET = PET[..., np.newaxis].transpose((0,4,1,2,3))
     CT = CT[..., np.newaxis].transpose((0,4,1,2,3))
     
-    return PT, CT
+    return PET, CT
