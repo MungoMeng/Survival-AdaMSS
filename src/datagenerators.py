@@ -48,7 +48,7 @@ def gen_rtload(data_path, sample_names, batch_size=1, balance_class=False):
 
     while True:
         
-        if balance_class == True and batch_size>0:
+        if balance_class == True and batch_size>1:
             # manually balance class
             idxes = []
             num_pos = num_neg = 0
