@@ -44,7 +44,7 @@ def gen_surv(gen):
         yield [PET, CT], [Label, Zero]
     
     
-def gen_rtload(data_path, sample_names, batch_size=1, balance_class=False):
+def gen_load(data_path, sample_names, batch_size=1, balance_class=False):
 
     while True:
         
