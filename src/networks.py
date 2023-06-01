@@ -282,7 +282,7 @@ class Surv_decoder(nn.Module):
         x_9 = torch.mean(x_9, dim=(2,3,4))
         x = torch.cat([x_6, x_7, x_8, x_9], dim=1)
         
-        # Clinical indicators and radiomics features can be concatenated here
+        # Clinical and radiomics features can be concatenated here
         # x = torch.cat([x_, x_clinic], dim=1)
         # x = torch.cat([x_, x_radio], dim=1)
         
