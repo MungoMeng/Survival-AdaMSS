@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as nnf
 
 
-class DeepMSS_Seg(nn.Module):
+class AdaMSS_Seg(nn.Module):
 
     def __init__(self):
         super().__init__()
@@ -27,7 +27,7 @@ class DeepMSS_Seg(nn.Module):
         return [Seg_Tumor_pred, Seg_Node_pred]
     
     
-class DeepMSS_Surv(nn.Module):
+class AdaMSS_Surv(nn.Module):
 
     def __init__(self):
         super().__init__()
@@ -138,7 +138,7 @@ class Fuse_encoder(nn.Module):
         x = torch.cat([x_PET_5, x_CT_5], dim=1)
         x_con_5 = self.Conv_5(x)
         
-        # automatic fuse encoder
+        # Adaptive fuse encoder
         x = torch.cat([PET, CT], dim=1)
         x = self.RB_1(x)
         x_1 = self.FG_1(x, x_con_1)
