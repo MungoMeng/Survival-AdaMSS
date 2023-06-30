@@ -34,7 +34,7 @@ def test(data_dir,
         device = 'cpu'
     
     # prepare the model
-    model = networks.DeepMSS_Seg()
+    model = networks.AdaMSS_Seg()
     print('loading', load_model)
     state_dict = torch.load(load_model, map_location=device)
     model.load_state_dict(state_dict)
