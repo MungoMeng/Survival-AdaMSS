@@ -55,7 +55,7 @@ def train(data_dir,
         device = 'cpu'
         
     # prepare the model
-    model = networks.DeepMSS_Seg()
+    model = networks.AdaMSS_Seg()
     if load_model != './':
         print('loading', load_model)
         state_dict = torch.load(load_model, map_location=device)
