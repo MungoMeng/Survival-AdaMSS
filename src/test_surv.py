@@ -50,7 +50,7 @@ def test(data_dir,
         device = 'cpu'
     
     # prepare the model
-    model = networks.DeepMSS_Surv()
+    model = networks.AdaMSS_Surv()
     print('loading', load_model)
     state_dict = torch.load(load_model, map_location=device)
     model.load_state_dict(state_dict)
