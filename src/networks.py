@@ -37,14 +37,14 @@ class AdaMSS_Surv(nn.Module):
         self.Fuse_encoder = Fuse_encoder(channel_num=16)
         self.Surv_decoder = Surv_decoder(channel_num=16, interval_num=10)
         
-    def forward(self, PET, CT):
+    def forward(self, PET, CT, RadioClinic=None):
 
         x_PET_1, x_PET_2, x_PET_3, x_PET_4, x_PET_5 = self.PET_encoder(PET)
         x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5 = self.CT_encoder(CT)
         x_1, x_2, x_3, x_4, x_5 = self.Fuse_encoder(PET, CT,
                                                     x_PET_1, x_PET_2, x_PET_3, x_PET_4, x_PET_5,
                                                     x_CT_1, x_CT_2, x_CT_3, x_CT_4, x_CT_5)
-        Surv_pred, Regu_weight = self.Surv_decoder(x_1, x_2, x_3, x_4, x_5)
+        Surv_pred, Regu_weight = self.Surv_decoder(x_1, x_2, x_3, x_4, x_5, RadioClinic=None)
         
         return [Surv_pred, Regu_weight]
 
@@ -222,7 +222,7 @@ class Seg_decoder(nn.Module):
     
 class Surv_decoder(nn.Module):
 
-    def __init__(self, channel_num, interval_num):
+    def __init__(self, channel_num, interval_num, radioclinic_num=8, use_radioclinic=False):
         super().__init__()
         
         self.RB_6 = Residual_block(channel_num*16+channel_num*8, channel_num*8, 4)
@@ -242,14 +242,17 @@ class Surv_decoder(nn.Module):
         
         self.dropout_1 = nn.Dropout(0.5)
         self.dropout_2 = nn.Dropout(0.5)
-        
-        self.dense_1 = nn.Linear(channel_num*15, channel_num*8)
+
+        if use_radioclinic:
+            self.dense_1 = nn.Linear(channel_num*15+radioclinic_num, channel_num*8)
+        else:
+            self.dense_1 = nn.Linear(channel_num*15, channel_num*8)
         self.dense_2 = nn.Linear(channel_num*8, interval_num)
         
         self.ReLU = nn.ReLU()
         self.Sigmoid = nn.Sigmoid()
         
-    def forward(self, x_1, x_2, x_3, x_4, x_5):
+    def forward(self, x_1, x_2, x_3, x_4, x_5, RadioClinic=None):
 
         # upsample 1/8 scale
         x_gate = self.Atten_gate_6(x_4, x_5)
@@ -283,8 +286,8 @@ class Surv_decoder(nn.Module):
         x = torch.cat([x_6, x_7, x_8, x_9], dim=1)
         
         # Clinical and radiomics features can be concatenated here
-        # x = torch.cat([x_, x_clinic], dim=1)
-        # x = torch.cat([x_, x_radio], dim=1)
+        if RadioClinic != None:
+            x = torch.cat([x, RadioClinic], dim=1)
         
         x = self.dropout_1(x)
         x = self.dense_1(x)
