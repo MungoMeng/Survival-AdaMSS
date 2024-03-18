@@ -224,6 +224,7 @@ class Surv_decoder(nn.Module):
 
     def __init__(self, channel_num, interval_num, radioclinic_num=8, use_radioclinic=False):
         super().__init__()
+        self.use_radioclinic = use_radioclinic
         
         self.RB_6 = Residual_block(channel_num*16+channel_num*8, channel_num*8, 4)
         self.RB_7 = Residual_block(channel_num*8+channel_num*4, channel_num*4, 3)
@@ -286,7 +287,7 @@ class Surv_decoder(nn.Module):
         x = torch.cat([x_6, x_7, x_8, x_9], dim=1)
         
         # Clinical and radiomics features can be concatenated here
-        if RadioClinic != None:
+        if self.use_radioclinic and RadioClinic != None:
             x = torch.cat([x, RadioClinic], dim=1)
         
         x = self.dropout_1(x)
