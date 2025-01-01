@@ -7,5 +7,5 @@ In this study, we propose an Adaptive Multi-modality Segmentation-to-Survival mo
 ![architecture](https://github.com/MungoMeng/Survival-AdaMSS/blob/master/Figure/Architecture.png)
 
 ## Publication
-* **Mingyuan Meng, Bingxin Gu, Michael Fulham, Shaoli Song, Dagan Feng, Lei Bi, Jinman Kim, "Adaptive segmentation-to-survival learning for survival prediction from multi-modality medical images," npj Precision Oncology, vol. 8, p. 232 2024. [[Nature](https://www.nature.com/articles/s41698-024-00690-y)]**
+* **Mingyuan Meng, Bingxin Gu, Michael Fulham, Shaoli Song, Dagan Feng, Lei Bi, Jinman Kim, "Adaptive segmentation-to-survival learning for survival prediction from multi-modality medical images," npj Precision Oncology, vol. 8, p. 232, 2024. [[Nature](https://www.nature.com/articles/s41698-024-00690-y)]**
 * **Mingyuan Meng, Bingxin Gu, Michael Fulham, Shaoli Song, Dagan Feng, Lei Bi, Jinman Kim, "AdaMSS: Adaptive Multi-Modality Segmentation-to-Survival Learning for Survival Outcome Prediction from PET/CT Images," arXiv preprint, arXiv:2305.09946, 2023. [[arXiv](https://arxiv.org/abs/2305.09946)]**
